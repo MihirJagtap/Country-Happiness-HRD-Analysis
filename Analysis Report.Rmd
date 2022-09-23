@@ -1,0 +1,156 @@
+---
+title: "Analysis of Country Happiness"
+output: html_document
+---
+
+## Introduction
+
+Happiness is considered an important and useful way to guide a country’s public policy and measure its effectiveness. A happy citizen will have good health, consequently contributing to the economy and growth of the country. Utilizing data from social welfare reports, such as the Gallup World Poll, we can produce a statistical analysis about the situation of a country and compare it with other countries across the globe.
+
+From this motivation, we will address two questions in our report: 1. How does the mean happiness score in Western Europe compare to the overall mean happiness score from all countries?  2. Does the happiness score vary by the freedom experienced by a country? We want to analyze Western Europe's mean happiness score as it is universally known that Scandinavian countries are generally happier. Additionally, since the data mainly divides countries according to regions and shows the happiness score for each of them, we thought comparing the happiness scores of one region against the other regions would help us explore the data deeply. For our second question, the main purpose of our analysis is to identify if there is a linear relationship between freedom and the happiness score. Since freedom is positively correlated with happiness, we assume a country with a high freedom score will have a higher overall happiness score.  
+
+
+## Background
+Our data set reflects the ‘World Happiness Report’ for the year 2021. Our source comes from a Kaggle dataset ^[https://www.kaggle.com/datasets/mathurinache/world-happiness-report] which was published in 2022 by Mathurin Ache. This data comes from the Gallup World Poll ^[https://www.gallup.com/analytics/349487/gallup-global-happiness-center.aspx] and was compiled into this database in Kaggle to be made available for data science analysis. The data set contains 20 rows and 149 columns, but for our analysis we only use six key variables which are described in the "Key Variables for Project Analysis" table below. 
+
+
+The Gallup World Poll asks citizens to answer main life evaluation questions. A typical Gallup survey includes responses from at least 1000 individuals in a country. In large countries, sample sizes go as high as 2000. These survey results are weighted as well to account for unequal selection probability, no-responses, and other factors.  In regards to our research question about freedom, one question asked in the poll is “Are you satisfied with your freedom to choose what you do with your life?” The citizens’ answers are binary responses where “yes” equals a score of 1 and “no” equals a score of 0. These scores were scaled to formulate an overall happiness index score so that the score of 10 represents the best possible life and 0 represents the worst possible life.  
+
+
+```{r, echo=FALSE, message = FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+
+happiness_variables = tibble(
+  Name = c("Country", "Region", "Happiness Score", "Freedom Score"),
+  Description = c("Represents the name of the country for which the happiness score is reported. There are a total of 149 countries in the dataset. ",
+                  "Describes what part of the globe the country is present in. The 149 countries are divided into 6 regions which are ‘Sub-Saharan Africa,’ ‘Western Europe,’ ‘Latin America and Caribbean,’ ‘Middle East and North Africa,’ ‘Central and Eastern Europe,’ and ‘North America and ANZ.’",
+                  "Represents the happiness score which is indicated on a scale of 1 to 10. ",
+                  "Represents ‘freedom to make life choices’ which is expressed on a scale from 0 to 1, where the value is the average of all the citizens’ responses."))
+
+happiness_variables %>% 
+  kable(caption = "Key Variables for Project Analysis") %>% 
+  kable_styling(position = "left", full_width = FALSE,
+                bootstrap_options = c("striped"))
+```
+
+
+According to the Gallup World Poll, the variable, freedom to make your own choices, is the country’s mean score of binary responses to the question "Are you satisfied with your freedom to choose what you do with your life?" Therefore, this is the background information that will be needed to better comprehend the questions relating to our data.  
+
+
+ 
+An unusual factor that might affect the interpretation of results  is the way the regions have been grouped. This might affect the interpretation of results. According to our dataset, North America and ANZ have been grouped in the same region. There is a significant difference between the freedom scores of countries in North America and countries under ANZ. This might result in an incorrect interpretation of the happiness score. 
+ 
+
+In our report, using the key variables, we aim to see how the happiness score for countries under the region ‘ Western Europe’ compare with the happiness scores of countries in other regions. Since freedom experienced by an individual plays an important role in their happiness, we also aim to see how the happiness score varies by the freedom experienced by it.     
+
+
+## Analysis
+
+Here, we will answer the first question of interest: how does the mean happiness score in Western Europe compare to the overall mean happiness score from all countries? 
+
+
+Below is a horizontal bar plot that demonstrates the average happiness score across each region.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, fig.height = 4)
+library(tidyverse)
+library(lubridate)
+library(scales)
+source("viridis.R")
+source("ggprob.R")
+```
+
+```{r, echo = FALSE, fig.height = 3, fig.cap = "**Bar Plot of Average Regional Happiness Score**. The plot is ordered by highest to lowest average happiness score for each region."}
+data=read_csv("2021.csv")
+df<-data %>% 
+  group_by(`Regional indicator`) %>% 
+  summarize(avg = round(mean(`Ladder score`),2)) %>% 
+  arrange(desc(avg)) %>% 
+  rename("Average Happiness Score" = avg)
+
+
+ggplot(df, aes(x = `Average Happiness Score`,  y=reorder(`Regional indicator`,`Average Happiness Score`), fill = `Average Happiness Score`))+
+  geom_bar(stat = "identity", )+
+  geom_text(aes(label=round(`Average Happiness Score`, 2)), size = 2, hjust=-0.5)+
+  theme(legend.position="none")+
+  ylab("Region")+
+  xlab("Mean Happines Score")+
+  ggtitle("Average Happines Score per Region")+
+  xlim(0,8)
+```
+
+This horizontal bar graph demonstrates that Western Europe has the second highest average happiness score. North America and ANZ is at the top of the graph, while South Asia is at the bottom of the graph.
+
+
+
+Next, we will answer the second question of interest: does the happiness score vary by the freedom experienced by a country?
+```{r, echo=FALSE, include=FALSE, fig.cap = "**Linear Relationship between Freedom and Overall Happiness**"}
+data
+model<-lm(`Ladder score`~ `Freedom to make life choices`, data=`data`)
+summary(model)
+```
+
+```{r, echo = FALSE, fig.cap = "**Linear Regression of Freedom and Happiness**. The plot shows as freedom increases, happiness increases."}
+ggplot(data, aes(x = `Freedom to make life choices`, y = `Ladder score`)) +
+  geom_point() +
+  geom_smooth(se = FALSE, method = "lm")+
+  xlab("Freedom to Make Life Choices")+
+  ylab("Happiness Score")+
+  ggtitle("Relationship between Freedom and Overall Happiness")
+```
+
+
+
+```{r, echo = FALSE, include=FALSE}
+df0 <- tibble(x=data$`Freedom to make life choices`, y=data$`Ladder score`)
+model<-lm(y~x, data=df0)
+summary(model)
+n <- nrow(df0)
+tcrit<-qt(.975, n-2)
+pred_slop <- signif(5.7590 ,2)
+error<-signif(0.9740,2)
+ci<-pred_slop + c(-1,1)*tcrit*error
+signif(ci,2)
+
+```
+
+
+This linear regression plot demonstrates that the freedom to make life choices has a positive correlation with a country’s overall happiness score. From the R "summary" function of our model, we were given the estimate values and the p-values as shown in the "Linear Regression Model Information" table below. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lr_info = tibble(
+  Name = c("Intercept", "Slope"),
+  Estimate = c("0.9740", "5.7590"),
+  pvalue = c("0.0516", "<2e-16"))
+
+lr_info %>% 
+  kable(caption = "Linear Regression Model Information") %>% 
+  kable_styling(position = "left", full_width = TRUE,
+                bootstrap_options = c("striped"))
+```
+
+
+- The equation for this linear model is: Happiness Score = 5.795(`Freedom to make life choices`) + 0.9740.
+
+- After computing the confidence intervals in R, we are 95% confident that the slope in a linear unseen happiness trend is between 3.9 and 7.7.
+
+- The p-value for the slope is small and statistically significant (2e-16 < 0.05). This means that changes in the freedom score is related to changes in the happiness score.
+
+
+
+
+
+## Discussion
+
+The first analysis we made was a horizontal bar graph showing the regions with their respective average happiness score. The graph shows that North America and ANZ has the highest happiness score and this could be for a variety of reasons. This region has a higher score for freedom to make choices, social support, and healthy life expectancy. These factors highly contribute to the happiness score average and especially could have made an impact due to the ongoing pandemic. The second analysis we made was a linear regression model that shows the relationship between the freedom to make choices and overall happiness. The graph shows a positive correlation between freedom and happiness, meaning the more freedom to make choices you have the higher the average happiness score will be. This could have also been affected dramatically during the peak of the pandemic, considering some countries don’t give their citizens all freedom to make choices. With a lack of freedom to make choices and a deadly virus forcing people to limit what freedoms they already have, certain countries may have had a drastic fall in the average happiness score.
+
+Some potential shortcomings for this experiment would be the fact that we didn’t incorporate every variable that the original data table gave. For example, we used the ‘freedom to make choices’ variable to see how it correlates with the overall happiness score. In the future, we could use a linear regression model with more features to see what variable has the most effect on the overall happiness score. Another potential shortcoming would be that we only used the year 2021.  This means it may not be extremely accurate of which country, overall, has the happiest people over a span of years. 
+
+For future research, we could use other variables that the original data table gave, such as generosity or perceptions of corruption, to see how they also affect the overall happiness scale. It could also be interesting to see a linear regression model using multiple features to see which features have the most effect on happiness. Another method you could use within this experiment is researching the difference of the countries’ rankings each year, analyzing what country/region scored the highest and what factors caused this. 
+From our analysis, we discovered that in the year 2021, the North American and ANZ region had the highest overall happiness score. It was also discovered that the freedom to make choices raises a region/country’s happiness. These may directly affect each other since the regions that were ranked higher on the graph also give their citizens more freedom; the regions that were ranked lower on the graph may not grant their citizens as much freedom to make choices. Besides freedom, there are plenty of other variables and factors to consider such as a country's generosity and social support. Recommendations for next steps in continuing this research and analysis can be focused on how other factors influence a country's overall happiness.
+
+## References
+
+
